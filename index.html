@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>에이티움 HR 도우미</title>
+<!-- SheetJS for Excel parsing -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;background:#f1f5f9;display:flex;justify-content:center;padding:20px;gap:20px;flex-wrap:wrap;}
+
+/* ── Chatbot ── */
+#wrap{display:flex;flex-direction:column;height:720px;width:700px;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,0.08);}
+#hdr{padding:14px 18px;border-bottom:1px solid #e2e8f0;background:linear-gradient(135deg,#1e40af,#3b82f6);display:flex;align-items:center;gap:12px;flex-shrink:0;}
+#hdr-icon{width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.2);color:#fff;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+#hdr-info{flex:1;}
+#hdr-title{font-size:16px;font-weight:700;color:#fff;}
+#hdr-sub{font-size:11.5px;color:rgba(255,255,255,0.8);margin-top:2px;}
+#msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;}
+.msg-bot{display:flex;gap:9px;align-items:flex-start;}
+.bot-av{width:30px;height:30px;border-radius:50%;background:#dbeafe;color:#1d4ed8;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-top:2px;}
+.bot-bbl{background:#f1f5f9;border-radius:0 12px 12px 12px;padding:11px 15px;font-size:13.5px;color:#334155;line-height:1.65;max-width:88%;}
+.msg-user{display:flex;justify-content:flex-end;}
+.user-bbl{background:#3b82f6;color:#fff;border-radius:12px 0 12px 12px;padding:10px 15px;font-size:13.5px;line-height:1.6;max-width:80%;}
+.widget{padding-left:39px;}
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:4px 0;}
+.cat-btn{padding:10px 13px;border:1px solid #e2e8f0;border-radius:10px;background:#fff;cursor:pointer;font-size:13px;color:#334155;text-align:left;transition:all 0.15s;display:flex;align-items:center;gap:7px;font-weight:500;}
+.cat-btn:hover{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8;}
+.sub-list{display:flex;flex-direction:column;gap:7px;padding:4px 0;}
+.sub-btn{padding:10px 14px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;cursor:pointer;font-size:13px;color:#334155;text-align:left;transition:all 0.15s;font-weight:500;display:flex;align-items:center;gap:7px;}
+.sub-btn:hover{background:#eff6ff;border-color:#93c5fd;color:#1d4ed8;}
+.q-list{display:flex;flex-direction:column;gap:7px;padding:4px 0;}
+.q-btn{padding:9px 13px;border:1px solid #e2e8f0;border-radius:9px;background:#fff;cursor:pointer;font-size:13px;color:#334155;text-align:left;transition:all 0.15s;line-height:1.45;}
+.q-btn:hover{background:#eff6ff;border-color:#93c5fd;}
+.nav-btns{display:flex;gap:7px;margin-top:2px;flex-wrap:wrap;}
+.back-btn{padding:6px 13px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;cursor:pointer;font-size:12px;color:#64748b;display:inline-flex;align-items:center;gap:4px;}
+.back-btn:hover{background:#f1f5f9;border-color:#94a3b8;}
+.answer-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:12px 15px;font-size:13.5px;color:#14532d;line-height:1.75;}
+.info-box{background:#fefce8;border:1px solid #fde68a;border-radius:8px;padding:9px 13px;font-size:12px;color:#78350f;margin-top:7px;line-height:1.6;}
+
+/* ── Admin Panel ── */
+#admin{width:380px;min-height:720px;border:1px solid #e2e8f0;border-radius:14px;background:#fff;box-shadow:0 4px 24px rgba(0,0,0,0.08);display:flex;flex-direction:column;overflow:hidden;}
+#admin-hdr{padding:14px 18px;background:linear-gradient(135deg,#065f46,#10b981);display:flex;align-items:center;gap:10px;flex-shrink:0;}
+#admin-hdr-icon{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.2);color:#fff;display:flex;align-items:center;justify-content:center;font-size:18px;}
+#admin-hdr-title{font-size:15px;font-weight:700;color:#fff;}
+#admin-hdr-sub{font-size:11px;color:rgba(255,255,255,0.8);margin-top:2px;}
+#admin-body{flex:1;padding:18px;display:flex;flex-direction:column;gap:16px;overflow-y:auto;}
+
+.admin-section{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;}
+.admin-section-title{font-size:12px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+
+/* Upload area */
+#drop-zone{border:2px dashed #cbd5e1;border-radius:10px;padding:24px 16px;text-align:center;cursor:pointer;transition:all 0.2s;background:#fff;}
+#drop-zone:hover,#drop-zone.dragover{border-color:#3b82f6;background:#eff6ff;}
+#drop-zone .dz-icon{font-size:32px;margin-bottom:8px;}
+#drop-zone .dz-text{font-size:13px;color:#64748b;line-height:1.5;}
+#drop-zone .dz-hint{font-size:11px;color:#94a3b8;margin-top:4px;}
+#file-input{display:none;}
+#upload-btn{width:100%;padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;margin-top:10px;transition:background 0.15s;}
+#upload-btn:hover{background:#2563eb;}
+
+/* Status */
+#status-box{border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.6;display:none;}
+#status-box.success{background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d;}
+#status-box.error{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;}
+#status-box.info{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;}
+
+/* Stats */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.stat-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px;text-align:center;}
+.stat-num{font-size:22px;font-weight:700;color:#1e40af;}
+.stat-label{font-size:11px;color:#64748b;margin-top:2px;}
+
+/* Category list */
+#cat-list{display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;}
+.cat-item{display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:#fff;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;}
+.cat-item-name{color:#334155;font-weight:500;}
+.cat-item-count{background:#dbeafe;color:#1e40af;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:600;}
+
+/* Format guide */
+.format-table{width:100%;border-collapse:collapse;font-size:11.5px;}
+.format-table th{background:#1e40af;color:#fff;padding:6px 8px;text-align:left;}
+.format-table td{padding:5px 8px;border-bottom:1px solid #e2e8f0;color:#475569;}
+.format-table tr:last-child td{border-bottom:none;}
+.format-table tr:nth-child(even) td{background:#f8fafc;}
+
+.required-badge{display:inline-block;background:#fef2f2;color:#991b1b;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;}
+.optional-badge{display:inline-block;background:#f0fdf4;color:#166534;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:600;}
+
+/* Download btn */
+#download-btn{width:100%;padding:9px;background:#059669;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.15s;display:flex;align-items:center;justify-content:center;gap:6px;}
+#download-btn:hover{background:#047857;}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ CHATBOT ══════════════ -->
+<div id="wrap">
+  <div id="hdr">
+    <div id="hdr-icon">🏢</div>
+    <div id="hdr-info">
+      <div id="hdr-title">에이티움 HR 도우미</div>
+      <div id="hdr-sub">임직원 문의 응대 시스템 · 에이티움 전용</div>
+    </div>
+  </div>
+  <div id="msgs"></div>
+</div>
+
+<!-- ══════════════ ADMIN PANEL ══════════════ -->
+<div id="admin">
+  <div id="admin-hdr">
+    <div id="admin-hdr-icon">⚙️</div>
+    <div>
+      <div id="admin-hdr-title">관리자 패널</div>
+      <div id="admin-hdr-sub">엑셀 업로드로 챗봇 데이터 업데이트</div>
+    </div>
+  </div>
+  <div id="admin-body">
+
+    <!-- Google Sheets Sync Section -->
+    <div class="admin-section">
+      <div class="admin-section-title">🔗 구글 시트 연동</div>
+      <div id="sheet-info">
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;margin-bottom:10px;">
+          <span style="font-size:18px;">✅</span>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#14532d;">구글 시트 연동됨</div>
+            <div style="font-size:11px;color:#166534;margin-top:1px;">에이티움 HR 챗봇 DB</div>
+          </div>
+        </div>
+        <div style="font-size:11.5px;color:#64748b;line-height:1.7;padding:0 2px;">
+          구글 시트를 수정하면 아래 <b>새로고침</b> 버튼을 눌러 챗봇에 반영하세요.<br>
+          <a href="https://docs.google.com/spreadsheets/d/1KQuKpjGLAoLV00_btBrXbv3QZ3C63DtgKAAEM52_Rjk/edit?gid=1537105553#gid=1537105553" target="_blank" style="color:#3b82f6;text-decoration:none;font-weight:600;">📄 구글 시트 열기 →</a>
+        </div>
+      </div>
+      <button id="upload-btn" onclick="loadFromGoogleSheets()" style="margin-top:10px;">🔄 구글 시트에서 새로고침</button>
+      <div id="status-box"></div>
+    </div>
+
+    <!-- Stats Section -->
+    <div class="admin-section">
+      <div class="admin-section-title">📊 현재 데이터 현황</div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-num" id="stat-cats">-</div><div class="stat-label">대카테고리</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-subs">-</div><div class="stat-label">소카테고리</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-qs">-</div><div class="stat-label">전체 질문</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-info">-</div><div class="stat-label">담당자 정보</div></div>
+      </div>
+      <div id="cat-list" style="margin-top:10px;"></div>
+    </div>
+
+    <!-- Download Section -->
+    <div class="admin-section">
+      <div class="admin-section-title">⬇️ 현재 데이터 내보내기</div>
+      <button id="download-btn" onclick="exportToExcel()">📥 엑셀로 다운로드</button>
+    </div>
+
+    <!-- Sheet Format Guide -->
+    <div class="admin-section">
+      <div class="admin-section-title">📋 구글 시트 컬럼 안내</div>
+      <p style="font-size:11.5px;color:#64748b;margin-bottom:8px;">시트 1행은 반드시 아래 헤더 순서를 유지하세요.</p>
+      <table class="format-table">
+        <tr><th>컬럼</th><th>헤더명</th><th>필수</th></tr>
+        <tr><td>A열</td><td>대카테고리</td><td><span class="required-badge">필수</span></td></tr>
+        <tr><td>B열</td><td>소카테고리</td><td><span class="required-badge">필수</span></td></tr>
+        <tr><td>C열</td><td>질문</td><td><span class="required-badge">필수</span></td></tr>
+        <tr><td>D열</td><td>답변</td><td><span class="required-badge">필수</span></td></tr>
+        <tr><td>E열</td><td>담당자정보</td><td><span class="optional-badge">선택</span></td></tr>
+      </table>
+      <p style="font-size:11px;color:#94a3b8;margin-top:8px;">💡 대카테고리 앞에 이모지를 붙이면 챗봇 버튼에 반영됩니다. (예: ⏰ 근무시간·근태)</p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  GOOGLE SHEETS 연동 설정
+// ══════════════════════════════════════════════════════
+const SHEET_API_KEY  = 'AIzaSyBxVKofJ9iGFFOZZVNZ3HfhlJbYij9s-NA';
+const SHEET_ID       = '1KQuKpjGLAoLV00_btBrXbv3QZ3C63DtgKAAEM52_Rjk';
+const SHEET_NAME     = 'HR Chatbot DB';
+
+function setStatus(msg, type){
+  const box = document.getElementById('status-box');
+  if(!box) return;
+  box.textContent = msg;
+  box.className = type;
+  box.style.display = 'block';
+}
+
+async function loadFromGoogleSheets(){
+  setStatus('⏳ 구글 시트에서 데이터를 불러오는 중...', 'info');
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${encodeURIComponent(SHEET_NAME)}?key=${SHEET_API_KEY}`;
+  try {
+    const res = await fetch(url);
+    if(!res.ok){
+      const errJson = await res.json().catch(()=>({}));
+      const errMsg = errJson.error?.message || res.statusText;
+      throw new Error(`API 오류 ${res.status}: ${errMsg}`);
+    }
+    const json = await res.json();
+    const rows = json.values || [];
+    if(rows.length < 2){ setStatus('❌ 시트에 데이터가 없습니다.', 'error'); return; }
+
+    const headers = rows[0];
+    const colIdx = {
+      cat:   headers.indexOf('대카테고리'),
+      sub:   headers.indexOf('소카테고리'),
+      q:     headers.indexOf('질문'),
+      a:     headers.indexOf('답변'),
+      info:  headers.indexOf('담당자정보'),
+    };
+    const missing = Object.entries(colIdx).filter(([k,v])=>k!=='info'&&v===-1).map(([k])=>k);
+    if(missing.length){ setStatus(`❌ 필수 컬럼 누락: ${missing.join(', ')}`, 'error'); return; }
+
+    const catsMap = new Map();
+    rows.slice(1).forEach(row => {
+      const catRaw = (row[colIdx.cat]||'').trim();
+      const subLabel = (row[colIdx.sub]||'').trim();
+      const q   = (row[colIdx.q]||'').trim();
+      const a   = (row[colIdx.a]||'').trim();
+      const info = colIdx.info >= 0 ? (row[colIdx.info]||'').trim() : '';
+      if(!catRaw||!subLabel||!q||!a) return;
+
+      const iconMatch = catRaw.match(/^(\p{Emoji}[\ufe0f\u20e3]?)\s*(.+)$/u);
+      const catIcon  = iconMatch ? iconMatch[1] : '';
+      const catLabel = iconMatch ? iconMatch[2].trim() : catRaw;
+
+      if(!catsMap.has(catLabel)){
+        catsMap.set(catLabel, { id: catLabel.replace(/[^a-zA-Z0-9가-힣]/g,'_'), icon:catIcon, label:catLabel, subsMap:new Map() });
+      }
+      const cat = catsMap.get(catLabel);
+      if(catIcon) cat.icon = catIcon;
+      if(!cat.subsMap.has(subLabel)) cat.subsMap.set(subLabel, {label:subLabel, qs:[]});
+      const qObj = {q, a};
+      if(info) qObj.info = info;
+      cat.subsMap.get(subLabel).qs.push(qObj);
+    });
+
+    const newData = {cats:[]};
+    catsMap.forEach(cat => {
+      const subs = []; cat.subsMap.forEach(sub => subs.push(sub));
+      newData.cats.push({id:cat.id, icon:cat.icon, label:cat.label, subs});
+    });
+    if(!newData.cats.length){ setStatus('❌ 유효한 데이터가 없습니다.', 'error'); return; }
+
+    DATA = newData;
+    state='cats'; curCatIdx=null; curSubIdx=null;
+    $m().innerHTML='';
+    const totalQs = newData.cats.reduce((s,c)=>s+c.subs.reduce((ss,sub)=>ss+sub.qs.length,0),0);
+    addBot(`✅ 구글 시트 데이터가 반영되었습니다!<br><b>${newData.cats.length}개</b> 카테고리 · <b>${totalQs}개</b> 질문<br>아래 카테고리에서 궁금한 항목을 선택해 주세요.`);
+    showCats();
+    setStatus(`✅ 로드 완료 — ${rows.length-1}행 반영 (${new Date().toLocaleTimeString()})`, 'success');
+    updateStats();
+  } catch(err){
+    console.error(err);
+    setStatus('❌ 불러오기 실패: ' + err.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  CHATBOT STATE
+// ══════════════════════════════════════════════════════
+let state = 'cats';
+let curCatIdx = null;
+let curSubIdx = null;
+
+// 빈 데이터로 시작 (구글 시트에서 로드)
+let DATA = { cats: [] };
+
+// ── 하드코딩 데이터는 더 이상 사용하지 않습니다 ──
+// 구글 시트: https://docs.google.com/spreadsheets/d/1KQuKpjGLAoLV00_btBrXbv3QZ3C63DtgKAAEM52_Rjk
+
+const DEFAULT_DATA = {
+  cats: [
+    {
+      id:'work', icon:'⏰', label:'근무시간·근태',
+      subs:[
+        {
+          label:'📅 근무시간 기본',
+          qs:[
+            {
+              q:'기본 근무시간이 어떻게 되나요?',
+              a:'근무시간은 <b>09:00~18:00</b> 또는 <b>10:00~19:00</b> 중 월 단위로 선택합니다.\n월 중도 변경은 불가합니다.\n\n※ 유연근무제는 운영하지 않으며, 정시 출·퇴근을 준수해야 합니다.'
+            },
+            {
+              q:'9시 30분에 출근하면 퇴근은 몇 시예요?',
+              a:'근태는 시간 단위로 적용됩니다.\n예를 들어 9:30에 출근하면 퇴근은 18:30이 아닌 <b>19:00</b>입니다.\n\n근무시간 선택(9시/10시 출근)에 따른 표준 퇴근 시각을 반드시 준수해 주세요.'
+            },
+            {
+              q:'집중근무시간이 언제예요?',
+              a:'집중근무시간은 하루 두 차례 운영됩니다.\n\n• <b>오전 집중근무: 09:30 ~ 11:30 (2시간)</b>\n• <b>오후 집중근무: 14:00 ~ 16:00 (2시간)</b>\n\n집중근무시간 중에는 아래 사항을 반드시 준수해야 합니다.\n• No Meeting (회의 소집 금지)\n• No Call (전화 자제 — 긴급 상황 외)\n• No Visit (타 부서 방문 및 사적 대화 금지)\n• No Smoking (흡연 금지)\n\n※ 시범운영: 2026. 5. 18(월) ~ 5. 29(금)\n※ 정식시행: 2026. 6. 1(월) (피드백 반영)',
+              info:'집중근무 중 위 사항을 지키지 않을 경우 평가에 불이익이 있을 수 있습니다.'
+            },
+          ]
+        },
+        {
+          label:'🏢 출퇴근·지점 근무',
+          qs:[
+            {
+              q:'지점 출근(직출) 시 어떻게 해야 하나요?',
+              a:'지점 직출 시 아래 절차를 반드시 따라야 합니다.\n\n① 지점 내 리더기에 <b>사원증 태그</b> (필수)\n② 비즈메카 일정 내용란에 업무 내용 상세 기재 후 등록\n   — 참여자에 <b>HR팀 신재인 대리</b> 반드시 추가\n\n⚠️ 사원증 태그를 하지 않거나, 비즈메카 일정에 신재인 대리를 참여자로 추가하지 않으면 <b>지각 또는 결근으로 간주</b>될 수 있습니다.',
+              info:'담당자: HR팀 신재인 대리'
+            },
+            {
+              q:'지점 퇴근(직퇴) 시 어떻게 해야 하나요?',
+              a:'지점 직퇴 시 아래 절차를 반드시 따라야 합니다.\n\n① 지점 내 리더기에 <b>사원증 태그</b> (필수)\n② 비즈메카 일정 내용란에 업무 내용 상세 기재 후 등록\n   — 참여자에 <b>HR팀 신재인 대리</b> 반드시 추가\n\n⚠️ 사원증 태그를 하지 않거나, 비즈메카 일정에 신재인 대리를 참여자로 추가하지 않으면 <b>퇴근 미등록 또는 결근으로 간주</b>될 수 있습니다.',
+              info:'담당자: HR팀 신재인 대리'
+            },
+            {
+              q:'모바일 사원증은 어떻게 발급받나요?',
+              a:'입사 전날 <b>1588-3112</b> 번호로 앱 설치 안내 문자가 발송됩니다.\n안내에 따라 앱을 설치하시면 됩니다.\n\n※ 기기 또는 전화번호 변경 시 재발급이 필요합니다.'
+            },
+            {
+              q:'사원증 태그를 안 하면 어떻게 되나요?',
+              a:'사원증 미태그로 출·퇴근 기록이 누락될 경우 다음과 같은 불이익이 발생합니다.\n\n• OT(시간외근로) 수당 지급 제외\n• 비즈메카 일정에 신재인 대리가 참여자로 등록되어 있지 않으면 <b>지각 또는 결근으로 간주</b>될 수 있습니다.\n\n반드시 사원증 태그와 비즈메카 일정 등록을 함께 진행해 주세요.'
+            },
+          ]
+        },
+        {
+          label:'🕐 OT·연장근무',
+          qs:[
+            {
+              q:'야근하면 무조건 OT 수당이 나오나요?',
+              a:'아니요. <b>시간외근로 기안을 통해 사전 승인된 경우에 한해서만</b> OT 수당이 지급됩니다.\n\n사후 신청 기한:\n• 연장근무: D+1일까지\n• 휴일근로 사전: D-1일 / 사후: D+1일\n\n30분 단위로 기안해야 합니다.'
+            },
+            {
+              q:'연장수당은 어떻게 계산되나요?',
+              a:'연장수당은 <b>30분 단위</b>로 산정됩니다.\n\n[평일 연장근무]\n• 30분당 7,500원\n• 1시간당 15,000원\n\n[야간근로수당]\n• (야간근로단위시간 × 7,500원 ÷ 30분 ÷ 1.5) × 2\n\n[휴일근로]\n• 30분당 7,500원 / 1시간당 15,000원\n\n[법정공휴일 근무]\n• 통상임금의 <b>1.5배</b> 지급',
+              info:'결재선:\n• 연장근로: 신재인 대리(합의) → 팀장\n• 휴일근로: 인사팀 팀장(합의) → 팀장'
+            },
+            {
+              q:'OT 지급액이 예상보다 적은 이유가 뭔가요?',
+              a:'시간외근로 수당은 <b>매월 25일</b>을 기준으로 정산됩니다.\n\n25일 이후(말일 포함)에 발생한 OT는 해당 월이 아닌 <b>익월에 지급</b>됩니다.\n\n예) 5월 26일~31일 OT → 6월 급여(7월 5일)에 반영'
+            },
+            {
+              q:'휴게시간에 수당을 받을 수 있나요?',
+              a:'휴게시간은 수당으로 정산할 수 없습니다.\n\n법적으로 보장된 휴게시간이므로 반드시 쉬어야 하며, 이를 업무시간에 포함하거나 수당으로 전환하는 것은 불가합니다.'
+            },
+            {
+              q:'휴게시간에 외출할 수 있나요?',
+              a:'네, 가능합니다. 휴게시간은 개인 자유시간이므로 자유롭게 외출하실 수 있습니다.'
+            },
+          ]
+        },
+      ]
+    },
+    {
+      id:'salary', icon:'💰', label:'급여·임금',
+      subs:[
+        {
+          label:'💵 급여 기본',
+          qs:[
+            {q:'급여일이 언제예요?',a:'매월 <b>5일</b>에 지급됩니다.\n5일이 주말 또는 공휴일인 경우 <b>전일</b>에 지급됩니다.'},
+            {q:'점심 식대가 따로 나오나요?',a:'점심은 <b>구내식당에서 무료로 제공</b>되므로 별도 식대는 지급되지 않습니다.'},
+            {q:'급여 통장은 어느 은행으로 받나요?',a:'입사 시 <b>하나은행 통장 사본</b>을 제출합니다.\n부득이한 사유가 없는 경우 타 은행 통장은 반려될 수 있습니다.',info:'담당자: HR팀 신재인 대리'},
+            {q:'연봉 인상은 언제 되나요?',a:'평가 대상자는 <b>매년 연말 인사평가</b>를 통해 연봉 인상이 결정됩니다.\n\n구체적인 일정은 매년 회사 공지를 통해 안내됩니다.'},
+            {q:'연봉을 동료에게 말해도 되나요?',a:'연봉은 <b>절대로 타인에게 누설해서는 안 됩니다.</b>\n\n연봉 정보는 회사 내부 기밀사항으로, 동료 직원에게 공유하는 행위는 취업규칙 위반에 해당할 수 있습니다.'},
+          ]
+        },
+        {
+          label:'📄 급여명세서·OT',
+          qs:[
+            {q:'급여명세서는 어디서 확인하나요?',a:'이카운트에서 발송되는 <b>이메일</b>을 통해 확인하실 수 있습니다.\n\n[이메일 비밀번호]\n• 기본: <b>a + 본인 주민등록번호</b>\n• 안 될 경우: <b>a + 핸드폰번호</b>\n  (※ 주민등록번호에 연속된 숫자 3개가 있을 경우 자동으로 핸드폰번호로 설정됩니다)',info:'담당자: HR팀 신재인 대리'},
+            {q:'급여명세서 발급은 어떻게 신청하나요?',a:'비즈메카 전자결재를 통해 신청합니다.\n요청 서류 목록에서 <b>급여명세서</b>를 체크해 주세요.\n\n[결재선]\n본인 → 인사팀 담당자(결재)\n\n• 에이티움, 리엔장성형외과의원: HR팀 <b>신재인 대리</b>\n• 리엔장 홍대·명동·인천·목동 / 유픽 명동: HR팀 <b>이지현 주임</b>'},
+            {q:'OT 신청은 어떻게 하나요?',a:'비즈메카 전자결재로 신청하며, <b>승인된 건에 한해서만</b> 수당이 지급됩니다.\n\n[신청 기한]\n• 연장근무 사후: D+1일까지\n• 휴일근로 사전: D-1일 / 사후: D+1일\n• 30분 단위로 기안\n\n[수당 금액]\n• 추가연장: 30분당 7,500원 / 1시간당 15,000원\n• 야간근로수당: (야간근로단위시간 × 7,500원 ÷ 30분 ÷ 1.5) × 2\n• 휴일근로: 30분당 7,500원 / 1시간당 15,000원\n• 공휴일 근무: 통상임금의 1.5배',info:'결재선:\n• 연장근로: 신재인 대리(합의) → 팀장\n• 휴일근로: 인사팀 팀장(합의) → 팀장'},
+          ]
+        },
+        {
+          label:'🏥 4대보험',
+          qs:[
+            {q:'4대보험 피부양자 등록은 어떻게 하나요?',a:'<b>건강보험 앱</b> 또는 <b>건강보험공단 홈페이지</b>를 통해 직접 등록하실 수 있습니다.\n\n어려우신 경우 담당자에게 문의해 주세요.\n👉 https://blog.naver.com/dailykyungja/223981600498',info:'담당자: HR팀 신재인 대리'},
+            {q:'건강보험 연말정산은 언제 되나요?',a:'매년 <b>4월</b>에 전년도 한 해에 대한 건강보험 연말정산 정산분이 급여에 반영됩니다.'},
+            {q:'출산휴가·육아휴직 중 4대보험은 어떻게 되나요?',a:'[출산휴가 기간]\n• 국민연금, 고용보험, 산재보험 → <b>유예</b>\n• 건강보험 → 정상 납부\n\n[육아휴직 기간]\n• 건강보험, 국민연금, 고용보험, 산재보험 → <b>전부 유예</b>\n\n※ 유예 기간 중 정산분이 발생할 수 있으며, 복직 후 일괄 정산될 수 있습니다.',info:'담당자: HR팀 이지현 주임'},
+            {q:'4대보험 가입을 안 해도 되나요?',a:'4대보험 가입은 <b>법적 의무사항</b>으로, 입사 시 자동으로 가입 처리됩니다.\n\n단, 비자 종류 및 국적에 따라 일부 항목이 상이할 수 있습니다. 자세한 내용은 HR팀에 문의해 주세요.'},
+            {q:'입사 시 4대보험 공제는 언제부터 되나요?',a:'• <b>1일 입사자</b>: 당월분 공제 대상\n• <b>1일 이후 입사자</b>: 당월분 미공제 (익월부터 공제)'},
+          ]
+        },
+      ]
+    },
+    {
+      id:'vacation', icon:'🌴', label:'휴가·반차',
+      subs:[
+        {
+          label:'📆 연차 발생·사용',
+          qs:[
+            {q:'연차는 어떻게 발생하나요? (1년 이상)',a:'회계연도(1월~12월) 기준으로 발생합니다.\n\n• 1년 만근 시: <b>15개</b>\n• 이후 2년마다 1개씩 추가 (최대 25개)\n\n[입사월별 당해연도 발생 개수]\n1월 11개 / 2월 10개 / 3월 9개\n4월 8개 / 5월 7개 / 6월 6개\n7월 5개 / 8월 4개 / 9월 3개\n10월 2개 / 11월 1개 / 12월 0개'},
+            {q:'연차는 어떻게 발생하나요? (1년 미만)',a:'입사 후 <b>1달 만근 시 1개</b>씩 발생합니다. (최대 11개)\n\n예) 1월 입사 → 2월부터 매월 1개 발생'},
+            {q:'수습기간에도 연차를 사용할 수 있나요?',a:'네, 수습기간 중에도 연차 사용이 가능합니다.\n\n(<b>한 달 만근 시 월차 1개 발생</b>) 발생한 월차를 사용하시면 됩니다.'},
+            {q:'올해 연차를 다 쓰면 내년 연차를 당겨 쓸 수 있나요?',a:'<b>내년도 연차 선사용은 불가합니다.</b>\n\n연차를 모두 소진하신 경우, <b>무급휴가</b>를 HR팀 승인 후 사용하실 수 있습니다.\n무급휴가 사용 시 해당 일수만큼 급여에서 공제됩니다.'},
+            {q:'미사용 연차는 수당으로 정산받을 수 있나요?',a:'아니요. 당사는 <b>연차촉진제</b>를 시행하고 있어 미사용 연차는 수당으로 정산되지 않습니다.\n\n• 1년 미만자: 다음 연도로 이월 가능\n• 1년 이상자: 연말 소멸'},
+            {q:'퇴사 시 미사용 연차는 보상받을 수 있나요?',a:'네, 퇴사 시 잔여 연차에 대해서는 <b>연차수당으로 정산</b>받으실 수 있습니다.'},
+            {q:'연차를 취소할 수 있나요?',a:'사용한 연차일을 기준으로 <b>비즈메카 전자결재에서 "연차사용취소" 기안</b>을 상신해 주시면 됩니다.'},
+            {q:'연차를 쓰기로 했는데 출근하면 어떻게 되나요?',a:'출근 사실을 증빙(출퇴근 기록 등)으로 확인한 후, <b>"연차사용취소" 기안</b>을 비즈메카에서 상신해 주시면 됩니다.'},
+          ]
+        },
+        {
+          label:'🕑 반차·당일휴가',
+          qs:[
+            {q:'반차 시간이 어떻게 되나요? (9시 출근자)',a:'[9시 출근자 반차 시간]\n\n• <b>오전반차</b>: 09:00 ~ 13:00 → 14시 퇴근\n• <b>오후반차</b>: 14:00 ~ 18:00 → 14시 출근'},
+            {q:'반차 시간이 어떻게 되나요? (10시 출근자)',a:'[10시 출근자 반차 시간]\n\n• <b>오전반차</b>: 10:00 ~ 14:00 → 15시 퇴근\n• <b>오후반차</b>: 15:00 ~ 19:00 → 15시 출근'},
+            {q:'당일 연차를 써도 되나요?',a:'긴급 상황 발생 시 당일 연차 사용은 가능하나, <b>부서장 승인이 필수</b>이며 증빙 서류를 첨부해야 합니다.\n\n증빙 서류 예시: 진단서, 응급실 영수증 등'},
+            {q:'여름휴가가 따로 있나요?',a:'별도의 여름휴가 제도는 없으며, <b>본인의 연차를 활용</b>하여 사용합니다.'},
+          ]
+        },
+        {
+          label:'📝 휴가 신청·절차',
+          qs:[
+            {q:'휴가 신청은 언제까지 해야 하나요?',a:'사용일 기준 <b>2일 전</b> 결재 상신이 원칙입니다.\n\n사후 신청이 필요한 경우, <b>즉시 상신</b>해야 하며 사후 상신 사유에 대한 소명이 필요합니다.\n(진단서 등 증빙 서류 제출 필요)',info:'긴급 상황 외의 사후 신청이 반복될 경우 불이익이 있을 수 있습니다.'},
+            {q:'예비군은 어떻게 처리하나요?',a:'비즈메카 휴가 신청에서 휴가 구분을 <b>[공가]</b>로 선택한 후, 예비군 통지서 또는 수료증을 첨부해 주시면 됩니다.'},
+            {q:'휴직 신청은 어떻게 하나요?',a:'비즈메카 전자결재 > 휴가 종류에 맞는 서식 작성 > 상신\n\n[결재선]\n팀장(1차) → 본부장(2차)',info:'참조: HR팀 이지현 주임 (모성보호 담당)'},
+          ]
+        },
+        {
+          label:'🤱 출산·육아휴직',
+          qs:[
+            {q:'육아휴직 신청 서류가 어떻게 되나요?',a:'아래 서류 중 하나를 제출해 주세요.\n\n• <b>자녀가 포함된 주민등록등본</b> 또는\n• <b>가족관계증명서</b>\n\n※ 주민등록번호는 <b>전체 공개(마스킹 없음)</b> 상태로 제출합니다.',info:'담당자: HR팀 이지현 주임'},
+            {q:'출산휴가·육아휴직 중 급여와 4대보험은 어떻게 되나요?',a:'[출산휴가]\n• 국민연금, 고용보험, 산재보험 → 유예\n• 급여: 출산전후휴가 급여(고용보험)로 지원\n\n[육아휴직]\n• 건강보험, 국민연금, 고용보험, 산재보험 → 전부 유예\n• 육아휴직 급여: 고용보험에서 지원\n\n※ 유예 기간 중 정산분이 발생할 수 있으며, 복직 후 일괄 정산될 수 있습니다.',info:'담당자: HR팀 이지현 주임'},
+          ]
+        },
+      ]
+    },
+    {
+      id:'welfare', icon:'🎁', label:'복리후생',
+      subs:[
+        {
+          label:'🍽️ 식대·간식·회식',
+          qs:[
+            {q:'부서 회식비는 얼마예요?',a:'분기별 <b>1인당 50,000원</b>이 법인카드로 지원됩니다.'},
+            {q:'부서 회식비는 어떻게 사용하나요?',a:'회식 당일 재무팀에서 법인카드를 수령하고, 사용 후 <b>확인서와 함께 카드를 반납</b>합니다.\n(부서장 서명 필수)'},
+            {q:'팀 간식비는 어떻게 받나요?',a:'매월 <b>1인당 20,000원</b>이 PAYCO로 지급됩니다.\n(부서장을 통해 지급)'},
+            {q:'팀 간식비는 어떻게 사용할 수 있나요?',a:'<b>페이코(PAYCO) 앱</b>을 통해 PAYCO 가맹 사용처에서 자유롭게 결제하실 수 있습니다.'},
+          ]
+        },
+        {
+          label:'📚 자기계발·PAYCO',
+          qs:[
+            {q:'자기계발비 지원 대상이 누구예요?',a:'<b>근속 1년 이상</b> 임직원을 대상으로 지원합니다.'},
+            {q:'자기계발비는 얼마예요?',a:'직무 관련 교육에 한해 <b>연간 50만원 한도</b>로 지원합니다.\n\n※ 학자금(대학교 등록금 등)은 지원 대상에서 제외됩니다.'},
+            {q:'자기계발비는 어떻게 신청해요?',a:'비즈메카 > 전자결재 순서로 신청합니다.\n\n• 교육 전: 사전 교육신청서 제출\n• 교육 후: 사후 교육결과보고서 + 영수증 제출\n\n[결재선]\n팀장 → 인사팀 팀장(합의) → 본부장'},
+            {q:'PAYCO는 언제부터 지급받나요?',a:'<b>정규직 전환 시점</b>부터 매월 50,000원이 PAYCO로 지급됩니다.\n(수습기간 중에는 지급되지 않습니다)'},
+            {q:'퇴사 시 PAYCO는 어떻게 되나요?',a:'퇴사 시 잔여 PAYCO 포인트는 <b>퇴사일 기준 2주 이내</b>에 소진해야 합니다.\n2주 경과 후에는 자동으로 삭제됩니다.'},
+          ]
+        },
+        {
+          label:'🎂 생일·시술할인',
+          qs:[
+            {q:'생일 복리후생이 있나요?',a:'생일 기준 <b>D+2개월 이내</b>에 <b>유급 반차</b>가 지급됩니다.\n\n미사용 시 기간 초과 후 자동 소멸되니 기한 내 사용해 주세요.'},
+            {q:'생일 복리후생은 어떻게 사용하나요?',a:'비즈메카 > 전자결재 > 근태관리 > 연차 결재 시\n휴가 구분을 <b>[생일자 반차]</b>로 설정하여 신청하시면 됩니다.'},
+            {q:'임직원 시술 할인율은 어떻게 되나요?',a:'[쁘띠 시술]\n• 1년 미만: 15% / 1년 이상: 20% / 2년 이상: 30%\n• 지인 소개: 10%\n\n[성형 시술]\n• 1년 미만: 35% / 1년 이상: 40% / 2년 이상: 45%\n• 지인 소개: 30%'},
+          ]
+        },
+        {
+          label:'💐 경조사',
+          qs:[
+            {q:'경조사 휴가는 어떻게 되나요?',a:'[경조 휴가 일수]\n• 본인 결혼: 5일\n• 자녀 결혼: 1일\n• 배우자 사망: 5일\n• 자녀 사망: 5일\n• 부모(배우자 부모 포함) 사망: 5일\n• 조부모 사망: 2일\n\n※ 경조 휴가는 사유 발생일로부터 공휴일 포함하여 산정됩니다.',info:'담당자: HR팀 이지현 주임'},
+            {q:'경조금 지원은 어떻게 되나요?',a:'경조금과 화환이 함께 지원됩니다.\n\n[경조금 기준]\n• 본인 결혼: 30~50만원\n• 자녀 결혼: 30만원\n• 배우자 사망: 100만원\n• 자녀 사망: 50만원\n• 부모 사망: 30만원',info:'담당자: HR팀 이지현 주임'},
+            {q:'경조사 화환은 어떻게 신청하나요?',a:'전자결재 상신 전에 먼저 <b>인사팀에 모바일 부고장 또는 청첩장을 전달</b>해 주세요.\n이후 경조사 신청 전자결재를 올려주시면 됩니다.',info:'담당자: HR팀 이지현 주임'},
+            {q:'경조사 신청은 어떻게 하나요?',a:'비즈메카 > 전자결재 > 서식함(인사) > <b>경조사 신청</b>\n\n[신청 기한]\n• 경사(결혼 등): 2주 전 결재\n• 조사(장례 등): 사후 1개월 이내',info:'담당자: HR팀 이지현 주임'},
+          ]
+        },
+      ]
+    },
+    {
+      id:'sawoe', icon:'🤝', label:'사우회',
+      subs:[
+        {
+          label:'📋 가입·혜택',
+          qs:[
+            {q:'사우회는 언제 가입하나요?',a:'<b>입사 시 필수 가입</b>합니다. 별도 신청 없이 자동으로 가입 처리됩니다.'},
+            {q:'사우회 복지 혜택에는 어떤 것이 있나요?',a:'사우회에서는 아래와 같은 복지를 지원합니다.\n\n• 경사 (결혼 등) 지원\n• 조사 (장례) 지원\n• 출산 지원\n• 자녀 입학 지원\n• 칠순 지원\n• 상조회사 서비스\n• 퇴사 전별금\n• 그 외 복지 혜택\n\n자세한 내용은 사우회 정관을 참고해 주세요.'},
+            {q:'사우회 규정은 어디서 확인하나요?',a:'비즈메카 게시판 > <b>4. 에이티움 사우회 정관</b>에서 확인하실 수 있습니다.'},
+          ]
+        },
+      ]
+    },
+    {
+      id:'it', icon:'💻', label:'IT·비품',
+      subs:[
+        {
+          label:'🖥️ 장비·사무용품',
+          qs:[
+            {q:'PC는 어떻게 지급받나요?',a:'일반 임직원은 <b>데스크탑</b>이 원칙입니다.\n임원급 및 출장이 잦은 담당자에게는 <b>노트북</b>이 지급됩니다.',info:'신청: 비즈메카 > 전자결재 > 전산장비 구매 신청서(법인)'},
+            {q:'사무용품은 어떻게 신청하나요?',a:'오피스디포(b2b.officedepot.co.kr)에서 팀별 계정으로 신청합니다.\n\n수령자명란에 반드시 <b>[부서명 + 담당자 이름]</b>을 기재해 주세요.'},
+          ]
+        },
+        {
+          label:'🌐 네트워크·보안',
+          qs:[
+            {q:'사내 Wi-Fi 비밀번호가 어떻게 되나요?',a:'• SSID: <b>Atium-Guest</b>\n• 비밀번호: <b>guest@3625</b>',info:'사내 인증 기기 관련 문의: 네트워크보안팀 최형준 대리'},
+            {q:'프린터 IP 주소는 어떻게 되나요?',a:'• 2층: <b>192.168.12.220</b>\n• 3~8층: <b>192.168.[층번호].245</b>\n  (예: 5층 → 192.168.5.245)',info:'담당: 네트워크보안팀 최형준 대리'},
+            {q:'그룹웨어는 어떤 것을 사용하나요?',a:'아래 두 가지를 <b>필수</b>로 가입 및 사용해야 합니다.\n\n• <b>비즈메카</b>: 전자결재, 게시판 등 공식 업무 처리\n• <b>네이버웍스</b>: 내부 소통 및 메시지'},
+            {q:'보안 규정에서 주의할 점은 무엇인가요?',a:'다음 보안 규정을 반드시 준수해야 합니다.\n\n• USB 등 외장저장장치 사용 통제\n• 외부 정보 유출 방지 (DLP 시스템 운영)\n• 회사 지정 <b>백신 필수 설치 및 실행</b>',info:'담당: 네트워크보안팀 최형준 대리'},
+          ]
+        },
+      ]
+    },
+    {
+      id:'hire', icon:'📝', label:'입퇴사',
+      subs:[
+        {
+          label:'🚪 입사',
+          qs:[
+            {q:'입사 시 제출 서류가 뭔가요?',a:'입사 전 또는 출근 후 3일 이내에 아래 서류를 제출해 주세요.\n\n• 신분증 사본 (또는 주민등록등본)\n• 통장 사본 (<b>하나은행 필수</b>)\n• 경력증명서 (경력자 해당)\n• 인사기록카드 (파일 + PDF)\n• 졸업증명서\n• 오퍼레터 서명본',info:'제출처: 엽선경 대리'},
+          ]
+        },
+      ]
+    },
+    {
+      id:'approval', icon:'📋', label:'결재·교육·규정',
+      subs:[
+        {
+          label:'📩 명함·비품 신청',
+          qs:[
+            {q:'명함은 어떻게 신청하나요?',a:'비즈메카 > 전자결재 > 기안문 작성 > <b>[명함신청서(법인)]</b> 선택\n→ 구글 링크 접속 후 정보 입력\n\n• 비고란에 신청 사유 필수 기재\n• 매월 2회 마감 기한이 있으니 일정을 확인하고 신청해 주세요.',info:'담당: 크리에이티브팀'},
+          ]
+        },
+        {
+          label:'📖 법정의무교육',
+          qs:[
+            {q:'법정의무교육은 어떻게 진행되나요?',a:'<b>한국기업교육진흥원</b>을 통해 온라인으로 진행됩니다.\n\n수강 시작일 전 카카오톡 메시지로 ID·PW·과정명·수강기간이 발송됩니다.\n안내에 따라 기간 내에 이수해 주세요.'},
+            {q:'법정의무교육 과목에는 어떤 것이 있나요?',a:'아래 5가지 과목을 의무적으로 수강해야 합니다.\n\n① 성희롱 예방\n② 개인정보 보호법\n③ 직장 내 장애인 인식 개선\n④ 퇴직연금\n⑤ 산업안전보건교육'},
+            {q:'법정의무교육을 미수료하면 어떻게 되나요?',a:'미수료 시 <b>평가 및 보상에 불이익</b>이 발생합니다.\n\n기한 내 반드시 이수해 주시기 바랍니다.'},
+          ]
+        },
+        {
+          label:'📜 회사 규정',
+          qs:[
+            {q:'출장여비 규정은 어디서 확인하나요?',a:'비즈메카 게시판 > <b>02. 제도 및 규정</b>에서 확인하실 수 있습니다.',info:'담당: 재무회계팀 손우석 대리'},
+          ]
+        },
+      ]
+    },
+    {
+      id:'biz_trip', icon:'✈️', label:'출장비',
+      subs:[
+        {
+          label:'🇰🇷 국내 출장',
+          qs:[
+            {q:'국내 출장비 기준은 어떻게 되나요?',a:'[숙박비 - 실비 정산]\n• 임원: 100,000원 한도 (휴일 120,000원)\n• 부장 이하: 70,000원 한도 (휴일 90,000원)\n\n[식대 - 1식]\n• 임원: 12,000원\n• 부장 이하: 9,000원\n\n[교통]\n• 임원: KTX 특실, 우등버스\n• 부장 이하: KTX 일반실, 일반버스\n\n※ 제주를 제외한 국내 항공편 이용 금지\n※ 당일 출장 시 숙박비 미지급',info:'자차 이용 시: 네이버 길찾기 기준 주유비 + 톨게이트·주차비 실비 정산 / 복귀 후 14일 이내 정산'},
+          ]
+        },
+        {
+          label:'🌏 해외 출장',
+          qs:[
+            {q:'해외 출장 일비 기준은 어떻게 되나요?',a:'[지역 구분]\n• 가: 미국·유럽·오세아니아·중동\n• 나: 일본·중화권·싱가포르\n• 다: 동남아·아프리카·기타\n\n[일비 - 숙박·식대·현지 교통 포함]\n• 그룹A(임원1): 가 150,000 / 나 120,000 / 다 100,000원\n• 그룹B(임원2): 가 120,000 / 나 100,000 / 다 80,000원\n• 그룹C(부장 이하): 가 100,000 / 나 80,000 / 다 60,000원\n\n항공: Economy 원칙\n(그룹A는 9시간 이상 비행 시 Business 가능)',info:'도착일 14시 이전 도착 시 당일 일비 1/2 지급 / 호텔 3성급 원칙'},
+          ]
+        },
+        {
+          label:'📋 신청·정산 절차',
+          qs:[
+            {q:'출장 신청 및 정산 절차는 어떻게 되나요?',a:'① <b>출장신청서 상신</b>\n   국내: 출장 3영업일 전 / 해외: 출장 7영업일 전\n② 항공·숙박 예약\n   (Economy·3성급 원칙, 사전 예상금액 품의)\n③ 출장 수행 → 영수증 전부 수취\n④ <b>복귀 후 14일 이내 정산</b>\n   출장보고서 + 증빙자료 제출'},
+          ]
+        },
+      ]
+    },
+    {
+      id:'contact', icon:'📞', label:'담당자 연락처',
+      subs:[
+        {
+          label:'👩‍💼 HR팀 담당자',
+          qs:[
+            {q:'HR팀 담당자 업무 분장이 어떻게 되나요?',a:'<b>신재인 대리</b>\n급여 / 연차 / 노무 / OT / 퇴직 / 결재합의 등\n\n<b>이지현 주임</b>\n경조사 / 출산휴가 및 육아휴직 / 결재선 관련\n\n<b>엽선경 대리</b>\n채용(마케팅 외) / 비자 관련\n\n<b>한 건</b>\n채용(마케팅)\n\n<b>이주희 과장</b>\n그 외 문의',info:'네이버웍스, 유선, 직접 대면으로 연락 가능'},
+          ]
+        },
+      ]
+    },
+  ]
+};
+
+// DEFAULT_DATA는 더 이상 사용하지 않음 — 구글 시트에서 로드
+
+// ══════════════════════════════════════════════════════
+//  CHATBOT LOGIC
+// ══════════════════════════════════════════════════════
+
+function $m(){return document.getElementById('msgs');}
+
+function addBot(html){
+  const d=document.createElement('div');
+  d.className='msg-bot';
+  d.innerHTML=`<div class="bot-av">🏢</div><div class="bot-bbl">${html}</div>`;
+  $m().appendChild(d);
+  $m().scrollTop=$m().scrollHeight;
+}
+function addUser(text){
+  const d=document.createElement('div');
+  d.className='msg-user';
+  d.innerHTML=`<div class="user-bbl">${text}</div>`;
+  $m().appendChild(d);
+  $m().scrollTop=$m().scrollHeight;
+}
+function addWidget(html){
+  const d=document.createElement('div');
+  d.className='widget';
+  d.innerHTML=html;
+  $m().appendChild(d);
+  $m().scrollTop=$m().scrollHeight;
+}
+
+function showCats(){
+  state='cats'; curCatIdx=null; curSubIdx=null;
+  let g='<div class="cat-grid">';
+  DATA.cats.forEach((c,i)=>{
+    g+=`<button class="cat-btn" onclick="selectCat(${i})">${c.icon||''} ${c.label}</button>`;
+  });
+  g+='</div>';
+  addWidget(g);
+}
+
+function selectCat(i){
+  curCatIdx=i; state='subs';
+  const cat=DATA.cats[i];
+  addUser(`${cat.icon||''} ${cat.label}`);
+  addBot(`<b>${cat.label}</b> 관련 항목을 선택해 주세요.`);
+  let html=`<button class="back-btn" onclick="showCats()">← 카테고리로</button>`;
+  html+=`<div class="sub-list" style="margin-top:8px">`;
+  cat.subs.forEach((s,j)=>{
+    html+=`<button class="sub-btn" onclick="selectSub(${j})">${s.label}</button>`;
+  });
+  html+=`</div>`;
+  addWidget(html);
+}
+
+function selectSub(j){
+  curSubIdx=j; state='qs';
+  const cat=DATA.cats[curCatIdx];
+  const sub=cat.subs[j];
+  addUser(sub.label);
+  addBot(`<b>${sub.label}</b> 관련 자주 묻는 질문입니다.`);
+  let html=`<div class="nav-btns"><button class="back-btn" onclick="selectCat(${curCatIdx})">← 소카테고리로</button><button class="back-btn" onclick="showCats()">🏠 카테고리로</button></div>`;
+  html+=`<div class="q-list" style="margin-top:8px">`;
+  sub.qs.forEach((q,k)=>{
+    html+=`<button class="q-btn" onclick="selectQ(${k})">${q.q}</button>`;
+  });
+  html+=`</div>`;
+  addWidget(html);
+}
+
+function selectQ(k){
+  state='ans';
+  const q=DATA.cats[curCatIdx].subs[curSubIdx].qs[k];
+  addUser(q.q);
+  let aHtml=`<div class="answer-box">${q.a.replace(/\n/g,'<br>')}</div>`;
+  if(q.info) aHtml+=`<div class="info-box">ℹ️ ${q.info.replace(/\n/g,'<br>')}</div>`;
+  addBot(aHtml);
+  addWidget(`<div class="nav-btns">
+    <button class="back-btn" onclick="selectSub(${curSubIdx})">← 다른 질문 보기</button>
+    <button class="back-btn" onclick="selectCat(${curCatIdx})">↩ 소카테고리로</button>
+    <button class="back-btn" onclick="showCats()">🏠 카테고리로</button>
+  </div>`);
+}
+
+// ── Init: 구글 시트에서 데이터 로드 후 챗봇 시작 ──
+addBot(`안녕하세요! <b>에이티움 HR 도우미</b>입니다. 👋<br>데이터를 불러오는 중입니다...`);
+loadFromGoogleSheets();
+
+// ══════════════════════════════════════════════════════
+//  ADMIN: STATS & EXPORT
+// ══════════════════════════════════════════════════════
+
+function updateStats(){
+  const cats = DATA.cats;
+  const totalSubs = cats.reduce((s,c)=>s+c.subs.length,0);
+  const totalQs = cats.reduce((s,c)=>s+c.subs.reduce((ss,sub)=>ss+sub.qs.length,0),0);
+  const totalInfo = cats.reduce((s,c)=>s+c.subs.reduce((ss,sub)=>ss+sub.qs.filter(q=>q.info).length,0),0);
+
+  document.getElementById('stat-cats').textContent = cats.length;
+  document.getElementById('stat-subs').textContent = totalSubs;
+  document.getElementById('stat-qs').textContent = totalQs;
+  document.getElementById('stat-info').textContent = totalInfo;
+
+  const catList = document.getElementById('cat-list');
+  catList.innerHTML = cats.map(c=>{
+    const qCount = c.subs.reduce((s,sub)=>s+sub.qs.length,0);
+    return `<div class="cat-item">
+      <span class="cat-item-name">${c.icon||''} ${c.label}</span>
+      <span class="cat-item-count">${qCount}개</span>
+    </div>`;
+  }).join('');
+}
+
+function exportToExcel(){
+  const rows = [['대카테고리','소카테고리','질문','답변','담당자정보']];
+  DATA.cats.forEach(cat=>{
+    const catLabel = (cat.icon ? cat.icon+' ' : '') + cat.label;
+    cat.subs.forEach(sub=>{
+      sub.qs.forEach(q=>{
+        rows.push([catLabel, sub.label, q.q, q.a, q.info||'']);
+      });
+    });
+  });
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  // Column widths
+  ws['!cols'] = [{wch:20},{wch:26},{wch:42},{wch:60},{wch:30}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'HR챗봇 데이터');
+  XLSX.writeFile(wb, 'HR챗봇_데이터_에이티움.xlsx');
+}
+
+// Initialize stats on load (구글 시트 로드 후 자동 업데이트됨)
+updateStats();
+</script>
+</body>
+</html>
